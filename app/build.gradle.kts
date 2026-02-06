@@ -62,6 +62,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     //Navigation
     implementation(libs.androidx.navigation.compose)
+    // Material Extended Icons
+    implementation(libs.androidx.compose.material.icons.extended)
     //Koin
     implementation(libs.koin.android)
     implementation(libs.koin.android.compose)

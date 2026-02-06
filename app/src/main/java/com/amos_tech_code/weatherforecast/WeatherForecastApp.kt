@@ -14,7 +14,7 @@ class WeatherForecastApp : Application() {
             androidContext(this@WeatherForecastApp)
 
             // Provide the property value for isDebug
-            properties(mapOf("isDebug" to BuildConfig.DEBUG))
+            //properties(mapOf("isDebug" to BuildConfig.DEBUG))
 
             modules(listOf(appModule))
         }

@@ -38,6 +38,8 @@ androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", versi
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 # Lifecycle Runtime
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleRuntimeKtx" }
+# Material Extended Icons
+androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 # Koin
 koin-android = {module = "io.insert-koin:koin-android", version.ref = "koin"}
 koin-android-compose = {module = "io.insert-koin:koin-androidx-compose", version.ref = "koin"}
