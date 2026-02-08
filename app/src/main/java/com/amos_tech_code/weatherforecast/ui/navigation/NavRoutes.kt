@@ -11,4 +11,4 @@ object HomeRoute: NavRoutes
 object AddCityRoute: NavRoutes
 
 @Serializable
-object WeatherListRoute: NavRoutes
+object SavedCitiesRoute: NavRoutes

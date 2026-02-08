@@ -3,6 +3,9 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     // Kotlin Serialization
     alias(libs.plugins.kotlin.serialization)
+    // KSP
+    alias(libs.plugins.ksp)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -77,5 +80,9 @@ dependencies {
     implementation(libs.converter.gson)
     //Logging
     implementation(libs.logging.interceptor)
+    // Room
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
 
 }

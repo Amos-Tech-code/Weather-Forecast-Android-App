@@ -1,23 +1,17 @@
 package com.amos_tech_code.weatherforecast.core.di
 
 import com.amos_tech_code.weatherforecast.core.network.ConnectivityObserver
-import com.amos_tech_code.weatherforecast.ui.feature.add_city.AddCityScreenViewModel
-import com.amos_tech_code.weatherforecast.ui.feature.home.HomeViewModel
-import com.amos_tech_code.weatherforecast.ui.feature.weather_list.WeatherListViewModel
+import com.amos_tech_code.weatherforecast.data.local.shared_prefs.WeatherAppPreferences
+import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 val appModule = module {
 
+    includes(viewModelModule, repositoryModule, networkModule, databaseModule)
+
     // ConnectivityObserver
-    single { ConnectivityObserver(get()) }
+    single { ConnectivityObserver(androidContext()) }
 
-    // Repositories
-
-    // ViewModels
-    single { HomeViewModel() }
-
-    single { AddCityScreenViewModel() }
-
-    single { WeatherListViewModel() }
-
+    // Weather Preferences
+    single { WeatherAppPreferences(androidContext()) }
 }

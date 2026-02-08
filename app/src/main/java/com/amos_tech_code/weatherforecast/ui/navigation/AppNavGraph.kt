@@ -11,10 +11,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.amos_tech_code.weatherforecast.ui.feature.add_city.AddCityScreen
 import com.amos_tech_code.weatherforecast.ui.feature.home.HomeScreen
-import com.amos_tech_code.weatherforecast.ui.feature.weather_list.WeatherListScreen
+import com.amos_tech_code.weatherforecast.ui.feature.saved_cities.SavedCitiesScreen
 
 @Composable
 fun AppNavGraph(
+    startDestination: NavRoutes,
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
@@ -22,7 +23,7 @@ fun AppNavGraph(
     NavHost(
         navController = navController,
         modifier = modifier,
-        startDestination = HomeRoute,
+        startDestination = startDestination,
         enterTransition = {
             slideIntoContainer(
                 towards = AnimatedContentTransitionScope.SlideDirection.Left,
@@ -56,8 +57,8 @@ fun AppNavGraph(
             AddCityScreen(navController)
         }
 
-        composable<WeatherListRoute> {
-            WeatherListScreen(navController)
+        composable<SavedCitiesRoute> {
+            SavedCitiesScreen(navController)
         }
 
     }

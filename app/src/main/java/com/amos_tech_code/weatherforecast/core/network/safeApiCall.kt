@@ -46,10 +46,9 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
         }
     } catch (e: IOException) {
         val message = when (e) {
-            is UnknownHostException -> "No internet connection. Please check your network."
+            is UnknownHostException -> "Please check your network connection and try again."
             is SocketTimeoutException -> "Connection timed out. Please try again."
             is ConnectException -> "Unable to connect to the server. Please try again."
-            is SSLHandshakeException, is SSLException -> "Secure connection failed. Please try again."
             else -> "Temporary network issue. Please try again later."
         }
         ApiResult.Failure(ApiError.NetworkError(IOException(message)))

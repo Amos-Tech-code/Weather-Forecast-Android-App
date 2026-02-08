@@ -32,9 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -45,15 +42,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -62,19 +60,22 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.weatherforecast.R
 import com.amos_tech_code.weatherforecast.core.util.ObserveAsEvents
+import com.amos_tech_code.weatherforecast.domain.model.City
+import com.amos_tech_code.weatherforecast.domain.model.HourlyForecast
+import com.amos_tech_code.weatherforecast.domain.model.WeatherData
+import com.amos_tech_code.weatherforecast.domain.model.WeatherDetails
+import com.amos_tech_code.weatherforecast.ui.components.ErrorView
+import com.amos_tech_code.weatherforecast.ui.components.LoadingView
 import com.amos_tech_code.weatherforecast.ui.navigation.AddCityRoute
-import com.amos_tech_code.weatherforecast.ui.navigation.HomeRoute
-import com.amos_tech_code.weatherforecast.ui.navigation.WeatherListRoute
+import com.amos_tech_code.weatherforecast.ui.navigation.SavedCitiesRoute
 import com.amos_tech_code.weatherforecast.ui.theme.AppTypography
 import com.amos_tech_code.weatherforecast.ui.theme.DarkBackgroundGradient
-import com.amos_tech_code.weatherforecast.ui.theme.SolidBrightPurple
 import com.amos_tech_code.weatherforecast.ui.theme.SolidPurple
 import org.koin.androidx.compose.koinViewModel
 
@@ -91,6 +92,10 @@ fun HomeScreen(
             is HomeEvent.ShowErrorMessage -> {
                 Toast.makeText(navController.context, event.message, Toast.LENGTH_SHORT).show()
             }
+
+            is HomeEvent.NavigateToAddCity -> {
+                navController.navigate(AddCityRoute)
+            }
         }
     }
 
@@ -103,17 +108,28 @@ fun HomeScreen(
     val isSheetPartiallyExpanded = scaffoldState.bottomSheetState.currentValue == SheetValue.PartiallyExpanded
     val selectedTab = remember { mutableIntStateOf(0) }
 
+    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+    val selectedCity = savedStateHandle?.getStateFlow<City?>("selected_city", null)?.collectAsStateWithLifecycle()
+
+    LaunchedEffect(selectedCity?.value) {
+        selectedCity?.value?.let {
+            viewModel.updateLocation(it)
+            // Clear the value after processing to prevent re-triggering
+            savedStateHandle.remove<City>("selected_city")
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        // 1. Background Image - Full screen including behind system bars
+        // 1. Background Image
         Image(
             painter = painterResource(id = R.drawable.ic_weather_background_night),
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize(),
-            contentScale = ContentScale.Crop// Changed to Crop for better results
+            contentScale = ContentScale.Crop
         )
 
         when (val homeState = state) {
@@ -122,16 +138,16 @@ fun HomeScreen(
 
                 BottomSheetScaffold(
                     scaffoldState = scaffoldState,
-                    sheetPeekHeight = 320.dp, // Adjusted to show tabs + hourly section
+                    sheetPeekHeight = 320.dp,
                     sheetContainerColor = Color.Transparent,
-                    sheetDragHandle = null, // We'll use a custom one inside the sheet
+                    sheetDragHandle = null,
                     sheetShadowElevation = 0.dp,
                     containerColor = Color.Transparent,
                     sheetContent = {
                         BottomSheetContent(weatherData = data)
                     }
                 ) {
-                    // Main Background Content (Location + House)
+                    // Main Background Content
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -155,10 +171,10 @@ fun HomeScreen(
             }
 
             is HomeState.Loading -> LoadingView()
-            is HomeState.Error -> ErrorView(message = homeState.message, onRetry = {})
+            is HomeState.Error -> ErrorView(message = homeState.message, onRetry = { viewModel.retry() })
         }
 
-        // 2. Fixed Bottom Bar at the very bottom
+        // Bottom Bar
         AnimatedVisibility(
             visible = isSheetPartiallyExpanded,
             enter = slideInVertically(initialOffsetY = { it }),
@@ -169,11 +185,11 @@ fun HomeScreen(
                 selectedTab = selectedTab.intValue,
                 onTabSelected = { tabIndex ->
                     when (tabIndex) {
-                        0 -> navController.navigate(HomeRoute)
+                        0 -> { }
 
                         1 -> navController.navigate(AddCityRoute)
 
-                        2 -> navController.navigate(WeatherListRoute)
+                        2 -> navController.navigate(SavedCitiesRoute)
                     }
                 },
                 modifier = Modifier
@@ -235,15 +251,15 @@ private fun TopWeatherInfo(weatherData: WeatherData) {
 
 @Composable
 private fun BottomSheetContent(
-    weatherData: WeatherData,
+    weatherData: WeatherData
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF2E335A).copy(alpha = 0.9f)) // Solid dark purple background
-            .verticalScroll(rememberScrollState()) // Allows the grid to be scrolled up
+            .background(Color(0xFF2E335A).copy(alpha = 0.9f))
+            .verticalScroll(rememberScrollState())
     ) {
         // Custom Drag Handle
         Box(Modifier
@@ -254,43 +270,46 @@ private fun BottomSheetContent(
                 .background(Color.Black.copy(0.3f), CircleShape))
         }
 
-        // Tabs
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Hourly Forecast",
-                color = if(selectedTab == 0) Color.White else Color.White.copy(0.5f),
-                modifier = Modifier.clickable { selectedTab = 0 })
-            Text("Weekly Forecast",
-                color = if(selectedTab == 1) Color.White else Color.White.copy(0.5f),
-                modifier = Modifier.clickable { selectedTab = 1 })
-        }
+        // Tabs with indicator
+        TabLayout(
+            selectedTab = selectedTab,
+            onTabSelected = { tabIndex ->
+                selectedTab = tabIndex
+            }
+        )
 
         HorizontalDivider(color = Color.White.copy(0.1f))
 
-        // Hourly/Weekly horizontal section (Always visible in peek)
+        // Hourly/Weekly section
         LazyRow(
             contentPadding = PaddingValues(20.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (selectedTab == 0) {
-                items(weatherData.hourlyForecast) { ForecastCard(it, it.time == "Now") }
+                items(weatherData.hourlyForecast) { forecast ->
+                    ForecastCard(
+                        forecast = forecast,
+                        isActive = forecast.time == "Now" // Highlight "Now"
+                    )
+                }
             } else {
-                // Now Weekly is also a LazyRow with the same card style
                 items(weatherData.weeklyForecast) { day ->
-                    // Mapping DailyForecast to the card format
-                    ForecastCard(HourlyForecast(day.day, day.highTemp, day.iconRes, day.precipitation))
+                    // For weekly forecast, highlight "Today"
+                    ForecastCard(
+                        forecast = HourlyForecast(
+                            day.day,
+                            day.highTemp,
+                            day.iconRes,
+                            day.precipitation
+                        ),
+                        isActive = day.day == "Today" // Highlight "Today"
+                    )
                 }
             }
         }
 
-        // Weather Details Grid (Visible when user scrolls/expands)
+        // Weather Details Grid
         WeatherDetailsGrid(weatherData.weatherDetails)
-
-        // Extra spacer for the bottom bar
         Spacer(modifier = Modifier.height(100.dp))
     }
 }
@@ -300,7 +319,6 @@ fun ForecastCard(
     forecast: HourlyForecast,
     isActive: Boolean = false
 ) {
-    // Determine background and border based on selection
     val backgroundColor = if (isActive) SolidPurple else Color(0xFF48319D).copy(alpha = 0.3f)
     val borderColor = if (isActive) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.2f)
 
@@ -308,7 +326,7 @@ fun ForecastCard(
         modifier = Modifier
             .width(60.dp)
             .height(146.dp),
-        shape = RoundedCornerShape(50.dp), // Full stadium shape
+        shape = RoundedCornerShape(50.dp),
         color = backgroundColor,
         border = BorderStroke(1.dp, borderColor),
         shadowElevation = if (isActive) 10.dp else 0.dp
@@ -320,7 +338,6 @@ fun ForecastCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. Time
             Text(
                 text = forecast.time,
                 style = MaterialTheme.typography.labelLarge.copy(
@@ -330,7 +347,6 @@ fun ForecastCard(
                 color = Color.White
             )
 
-            // 2. Weather Icon & Probability
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Image(
                     painter = painterResource(id = forecast.iconRes),
@@ -338,19 +354,17 @@ fun ForecastCard(
                     modifier = Modifier.size(32.dp)
                 )
 
-                // Precipitation percentage (if available)
                 if (forecast.precipitation != null) {
                     Text(
                         text = "${forecast.precipitation}%",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color(0xFF40CBD8), // Light blue from design
+                            color = Color(0xFF40CBD8),
                             fontWeight = FontWeight.Bold
                         )
                     )
                 }
             }
 
-            // 3. Temperature
             Text(
                 text = "${forecast.temp}°",
                 style = MaterialTheme.typography.titleLarge.copy(
@@ -359,6 +373,46 @@ fun ForecastCard(
                 ),
                 color = Color.White
             )
+        }
+    }
+}
+
+@Composable
+fun TabLayout(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        listOf("Hourly Forecast", "Weekly Forecast").forEachIndexed { index, title ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .padding(vertical = 4.dp, horizontal = 8.dp)
+                    .clickable { onTabSelected(index) }
+            ) {
+                Text(
+                    text = title,
+                    color = if (selectedTab == index) Color.White else Color.White.copy(0.5f),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                // Indicator line
+                Box(
+                    modifier = Modifier
+                        .width(48.dp)
+                        .height(2.dp)
+                        .background(
+                            color = if (selectedTab == index) Color.White else Color.Transparent,
+                            shape = RoundedCornerShape(1.dp)
+                        )
+                )
+            }
         }
     }
 }
@@ -461,9 +515,8 @@ fun CustomBottomAppBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(110.dp) // Set a fixed height for the whole component
+            .height(110.dp)
     ) {
-        // 1. --- CURVE CORRECTION ---
         Canvas(modifier = Modifier.fillMaxSize()) {
             val width = size.width
             val height = size.height
@@ -471,17 +524,16 @@ fun CustomBottomAppBar(
             // The highest point of the "wings" on the side
             val wingHeight = height * 0.3f
 
-            // Define the path for the new smooth curve
+            // path for the smooth curve
             val path = Path().apply {
                 // Start at the top-left, where the curve begins
                 moveTo(0f, wingHeight)
 
-                // --- FIX IS HERE ---
                 // The main curve across the top, now bending downwards
                 quadraticTo(
-                    x1 = width / 2,    // The control point is at the horizontal center...
-                    y1 = height * 0.8f, // ...and pushed DOWN to create the dip in the middle.
-                    x2 = width,        // The curve ends at the top-right edge
+                    x1 = width / 2,    // horizontal center
+                    y1 = height * 0.8f, // pushed DOWN to create the dip in the middle.
+                    x2 = width,        // top-right edge
                     y2 = wingHeight
                 )
 
@@ -493,13 +545,13 @@ fun CustomBottomAppBar(
                 close()
             }
 
-            // Draw the background gradient (no changes here)
+            // background gradient
             drawPath(
                 path = path,
                 brush = DarkBackgroundGradient
             )
 
-            // Draw the top border highlight (no changes here)
+            // top border highlight
             drawPath(
                 path = path,
                 color = Color.White.copy(alpha = 0.2f),
@@ -507,8 +559,6 @@ fun CustomBottomAppBar(
             )
         }
 
-        // 2. --- ICONS AND INDICATORS ---
-        // This part needs adjustment to fit the new curve shape.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -516,16 +566,14 @@ fun CustomBottomAppBar(
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            // The side icons are now pushed down a bit
             NavigationItem(
                 icon = R.drawable.ic_location,
                 isSelected = selectedTab == 0,
                 indicator = indicatorPainter,
                 onClick = { onTabSelected(0) },
-                modifier = Modifier.offset(y = (-10).dp) // Adjust offset for new curve
+                modifier = Modifier.offset(y = (-10).dp)
             )
 
-            // Center Button now sits lower, in the dip
             PlusButton(
                 isSelected = selectedTab == 1,
                 indicator = indicatorPainter,
@@ -540,7 +588,7 @@ fun CustomBottomAppBar(
                 isSelected = selectedTab == 2,
                 indicator = indicatorPainter,
                 onClick = { onTabSelected(2) },
-                modifier = Modifier.offset(y = (-10).dp) // Adjust offset for new curve
+                modifier = Modifier.offset(y = (-10).dp)
             )
         }
     }
@@ -618,55 +666,6 @@ private fun PlusButton(
                     .size(44.dp)
                     .align(Alignment.Center)
             )
-        }
-    }
-}
-
-@Composable
-private fun LoadingView() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(color = Color.White)
-    }
-}
-
-@Composable
-private fun ErrorView(message: String, onRetry: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Text(
-                text = "Error",
-                style = AppTypography.title2Bold,
-                color = Color.White
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = message,
-                style = AppTypography.body,
-                color = Color.White.copy(alpha = 0.8f),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = SolidBrightPurple
-                )
-            ) {
-                Text("Retry")
-            }
         }
     }
 }

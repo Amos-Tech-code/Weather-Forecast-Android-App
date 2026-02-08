@@ -17,7 +17,7 @@ fun ApiError.extractApiErrorMessage(): String {
         }
 
         is ApiError.UnknownError -> {
-            "An unexpected error occurred: ${this.throwable.message ?: "Please try again"}"
+            "An unexpected error occurred. Please try again"
         }
     }
 }

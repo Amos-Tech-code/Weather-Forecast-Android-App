@@ -1,51 +1,206 @@
 package com.amos_tech_code.weatherforecast.ui.feature.add_city
 
 import androidx.lifecycle.ViewModel
-import com.amos_tech_code.weatherforecast.R
+import androidx.lifecycle.viewModelScope
+import com.amos_tech_code.weatherforecast.core.network.ApiError
+import com.amos_tech_code.weatherforecast.core.network.ApiResult
+import com.amos_tech_code.weatherforecast.core.network.extractApiErrorMessage
+import com.amos_tech_code.weatherforecast.domain.model.City
+import com.amos_tech_code.weatherforecast.domain.model.CitySearchResult
+import com.amos_tech_code.weatherforecast.domain.model.CityWeather
+import com.amos_tech_code.weatherforecast.domain.model.CityWithWeather
+import com.amos_tech_code.weatherforecast.domain.repository.CityRepository
+import com.amos_tech_code.weatherforecast.domain.repository.WeatherRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class AddCityScreenViewModel : ViewModel() {
 
-    private val _state = MutableStateFlow<List<CityWeather>>(emptyList())
-    val state: StateFlow<List<CityWeather>> = _state.asStateFlow()
+class AddCityScreenViewModel(
+    private val cityRepository: CityRepository,
+    private val weatherRepository: WeatherRepository
+) : ViewModel()
+{
 
-    private val _event = Channel<AddCityScreenEvent>()
-    val event = _event.receiveAsFlow()
+    // Saved cities state - first we show just cities, then load weather
+    private val _savedCities = MutableStateFlow<List<City>>(emptyList())
+    val savedCities: StateFlow<List<City>> = _savedCities.asStateFlow()
 
-    init {
-        fetchData()
-    }
+    // Separate flow for cities with weather (loaded asynchronously)
+    private val _citiesWithWeather = MutableStateFlow<Map<String, CityWithWeather>>(emptyMap())
+    val citiesWithWeather: StateFlow<Map<String, CityWithWeather>> = _citiesWithWeather.asStateFlow()
 
-    // Search Query
+    // Loading states
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    private val _isLoadingCities = MutableStateFlow(true)
+    val isLoadingCities: StateFlow<Boolean> = _isLoadingCities.asStateFlow()
+
+    // Search query
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    fun onSearchQueryUpdated(query: String) {
-        _searchQuery.update { query }
+    // Events
+    private val _event = Channel<AddCityScreenEvent>()
+    val event = _event.receiveAsFlow()
+
+    // Track weather loading per city
+    private val _weatherLoadingStates = MutableStateFlow<Set<String>>(emptySet())
+    val weatherLoadingStates: StateFlow<Set<String>> = _weatherLoadingStates.asStateFlow()
+
+    init {
+        loadSavedCitiesWithWeather()
     }
 
-    fun fetchData() {
-        _state.value = listOf(
-            CityWeather(1, 19, 24, 18, "Montreal", "Canada", "Mid Rain", R.drawable.ic_moon_cloud_mid_rain),
-            CityWeather(2, 20, 21, 19, "Toronto", "Canada", "Fast Wind", R.drawable.ic_moon_cloud_mid_rain),
-            CityWeather(3, 13, 16, 8, "Tokyo", "Japan", "Showers", R.drawable.ic_moon_cloud_mid_rain),
-            CityWeather(4, 10, 15, 7, "Tennessee", "United States", "Tornado", R.drawable.ic_moon_cloud_mid_rain)
-        )
+    private fun loadSavedCitiesWithWeather() {
+        viewModelScope.launch {
+            cityRepository.getAllCities()
+                .catch {
+                    _isLoadingCities.value = false
+                    _event.send(AddCityScreenEvent.ShowErrorMessage("Failed to load saved cities"))
+                }
+                .collect { cities ->
+                    // Show cities immediately
+                    _savedCities.value = cities
+                    _isLoadingCities.value = false
+
+                    // Load weather for each city
+                    val missingWeatherCities = cities.filter {
+                        _citiesWithWeather.value[it.id] == null
+                    }
+
+                    if (missingWeatherCities.isNotEmpty()) {
+                        loadWeatherForCities(missingWeatherCities)
+                    }
+                }
+        }
     }
+
+    private fun loadWeatherForCities(cities: List<City>) {
+        viewModelScope.launch {
+            _weatherLoadingStates.value = cities.map { it.id }.toSet()
+
+            coroutineScope {
+                cities.map { city ->
+                    async { loadWeatherForCity(city) }
+                }.awaitAll()
+            }
+        }
+    }
+
+    private suspend fun loadWeatherForCity(city: City) {
+        try {
+            val weatherResult = weatherRepository.getCityBasicWeather(
+                city.latitude,
+                city.longitude
+            )
+
+            val cityWithWeather = when (weatherResult) {
+                is ApiResult.Success -> {
+                    // The repository returns CityWeather, but we need to match it with our City
+                    CityWithWeather(
+                        city = city,
+                        weather = CityWeather(
+                            city = city,
+                            temp = weatherResult.data.temp,
+                            high = weatherResult.data.high,
+                            low = weatherResult.data.low,
+                            condition = weatherResult.data.condition,
+                            iconRes = weatherResult.data.iconRes
+                        ),
+                        error = null
+                    )
+                }
+                is ApiResult.Failure -> {
+                    CityWithWeather(
+                        city = city,
+                        weather = null,
+                        error = weatherResult.error.extractApiErrorMessage()
+                    )
+                }
+            }
+
+            // Update the specific city's weather
+            _citiesWithWeather.update { it + (city.id to cityWithWeather) }
+
+        } catch (_: Exception) {
+            val cityWithWeather = CityWithWeather(
+                city = city,
+                weather = null,
+                error = "Failed to fetch weather"
+            )
+
+            _citiesWithWeather.update { it + (city.id to cityWithWeather) }
+
+        } finally {
+            // Remove from loading set
+            _weatherLoadingStates.update { it - city.id }
+        }
+    }
+
+    // Search results state
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+    val searchResults: StateFlow<List<CitySearchResult>> = _searchQuery
+        .debounce(400)
+        .map { it.trim() }
+        .filter { it.length >= 2 }
+        .flatMapLatest { query ->
+            flow {
+                _isSearching.value = true
+                emit(cityRepository.searchCities(query))
+            }
+        }
+        .map { result ->
+            when (result) {
+                is ApiResult.Success -> result.data
+                is ApiResult.Failure -> emptyList()
+            }
+        }
+        .onEach { _isSearching.value = false }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            emptyList()
+        )
+
+    fun onSearchQueryUpdated(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun onAddToSavedState(suggestion: CitySearchResult) {
+        _searchQuery.value = ""
+        val city = City(
+            id = suggestion.id,
+            name = suggestion.name,
+            country = suggestion.country,
+            latitude = suggestion.latitude,
+            longitude = suggestion.longitude
+        )
+        viewModelScope.launch {
+            _event.send(AddCityScreenEvent.CityAdded(city))
+        }
+    }
+
 
 }
-data class CityWeather(
-    val id: Int,
-    val temp: Int,
-    val high: Int,
-    val low: Int,
-    val city: String,
-    val country: String,
-    val condition: String,
-    val iconRes: Int // Pass your 3D weather icons here
-)
