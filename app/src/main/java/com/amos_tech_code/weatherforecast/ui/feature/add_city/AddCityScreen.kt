@@ -42,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,6 +90,12 @@ fun AddCityScreen(
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
     val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
     val isLoadingCities by viewModel.isLoadingCities.collectAsStateWithLifecycle()
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.onClearSearch()
+        }
+    }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {

@@ -60,6 +60,10 @@ class AddCityScreenViewModel(
     // Search query
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+    // 1. Make searchResults a mutable state flow that we control directly.
+    private val _searchResults = MutableStateFlow<List<CitySearchResult>>(emptyList())
+    val searchResults: StateFlow<List<CitySearchResult>> = _searchResults.asStateFlow()
+
 
     // Events
     private val _event = Channel<AddCityScreenEvent>()
@@ -71,6 +75,33 @@ class AddCityScreenViewModel(
 
     init {
         loadSavedCitiesWithWeather()
+        viewModelScope.launch {
+            @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+            _searchQuery
+                .debounce(400)
+                .map { it.trim() }
+                //.distinctUntilChanged()
+                .flatMapLatest { query ->
+                    if (query.length < 2) {
+                        flowOf(emptyList())
+                    } else {
+                        flow {
+                            _isSearching.value = true
+                            try {
+                                when (val result = cityRepository.searchCities(query)) {
+                                    is ApiResult.Success -> emit(result.data)
+                                    is ApiResult.Failure -> emit(emptyList())
+                                }
+                            } finally {
+                                _isSearching.value = false
+                            }
+                        }
+                    }
+                }
+                .collect { results ->
+                    _searchResults.value = results
+                }
+        }
     }
 
     private fun loadSavedCitiesWithWeather() {
@@ -160,36 +191,21 @@ class AddCityScreenViewModel(
     }
 
     // Search results state
-    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-    val searchResults: StateFlow<List<CitySearchResult>> = _searchQuery
-        .debounce(400)
-        .map { it.trim() }
-        .filter { it.length >= 2 }
-        .flatMapLatest { query ->
-            flow {
-                _isSearching.value = true
-                emit(cityRepository.searchCities(query))
-            }
-        }
-        .map { result ->
-            when (result) {
-                is ApiResult.Success -> result.data
-                is ApiResult.Failure -> emptyList()
-            }
-        }
-        .onEach { _isSearching.value = false }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.Eagerly,
-            emptyList()
-        )
 
     fun onSearchQueryUpdated(query: String) {
         _searchQuery.value = query
     }
 
+    fun onClearSearch() {
+        _searchQuery.value = ""
+        _searchResults.value = emptyList()
+        _isSearching.value = false
+    }
+
     fun onAddToSavedState(suggestion: CitySearchResult) {
         _searchQuery.value = ""
+        _searchResults.value = emptyList()
+
         val city = City(
             id = suggestion.id,
             name = suggestion.name,
