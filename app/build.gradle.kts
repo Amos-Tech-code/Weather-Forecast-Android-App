@@ -34,6 +34,7 @@ android {
             )
         }
 
+        /*
         create("debugWithMinify") {
             // Inherit settings from the 'debug' build type
             initWith(getByName("debug"))
@@ -46,6 +47,8 @@ android {
                 "proguard-rules.pro"
             )
         }
+
+         */
 
     }
     compileOptions {

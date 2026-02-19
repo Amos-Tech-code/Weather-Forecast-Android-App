@@ -11,7 +11,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -60,7 +59,6 @@ fun WeatherForecastTheme(
     }
 
     // Set system bar colors
-    // Set system bar colors
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -69,14 +67,10 @@ fun WeatherForecastTheme(
             // By setting the second parameter to 'false', we are telling the system that our app will handle the colors.
             WindowCompat.setDecorFitsSystemWindows(window, false)
 
-            // Set both status to be transparent and navigation bar to be solid dark blue to draw behind them
-            window.statusBarColor = Color.Transparent.toArgb()
-            window.navigationBarColor = SolidDarkBlue.toArgb()
-
             // Handle the appearance of the status and navigation bar icons
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = false
-            insetsController.isAppearanceLightNavigationBars = false
+            insetsController.isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

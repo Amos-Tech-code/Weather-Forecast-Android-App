@@ -1,6 +1,5 @@
 package com.amos_tech_code.weatherforecast.ui.feature.add_city
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.weatherforecast.core.network.ApiResult
@@ -12,26 +11,30 @@ import com.amos_tech_code.weatherforecast.domain.model.CityWithWeather
 import com.amos_tech_code.weatherforecast.domain.repository.CityRepository
 import com.amos_tech_code.weatherforecast.domain.repository.WeatherRepository
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-
 class AddCityScreenViewModel(
     private val cityRepository: CityRepository,
     private val weatherRepository: WeatherRepository
-) : ViewModel()
-{
+) : ViewModel() {
 
     // Saved cities state - first we show just cities, then load weather
     private val _savedCities = MutableStateFlow<List<City>>(emptyList())
@@ -63,36 +66,80 @@ class AddCityScreenViewModel(
     private val _weatherLoadingStates = MutableStateFlow<Set<String>>(emptySet())
     val weatherLoadingStates: StateFlow<Set<String>> = _weatherLoadingStates.asStateFlow()
 
-    private var searchJob: Job? = null
-
     init {
-        loadSavedCitiesWithWeather()
+        observeSavedCities()
+        observeSearchQuery()
     }
 
-
-    private fun loadSavedCitiesWithWeather() {
-        viewModelScope.launch {
-            cityRepository.getAllCities()
-                .catch {
-                    _isLoadingCities.value = false
-                    _event.send(AddCityScreenEvent.ShowErrorMessage("Failed to load saved cities"))
-                }
-                .collect { cities ->
-                    // Show cities immediately
-                    _savedCities.value = cities
-                    _isLoadingCities.value = false
-
-                    // Load weather for each city
-                    val missingWeatherCities = cities.filter {
-                        _citiesWithWeather.value[it.id] == null
-                    }
-
-                    if (missingWeatherCities.isNotEmpty()) {
-                        loadWeatherForCities(missingWeatherCities)
-                    }
-                }
-        }
+    fun onSearchQueryUpdated(query: String) {
+        _searchQuery.value = query
     }
+
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    private fun observeSearchQuery() {
+        _searchQuery
+            .debounce(400)
+            .distinctUntilChanged()
+            .flatMapLatest { query ->
+
+                if (query.length < 2) {
+                    _searchResults.value = emptyList()
+                    _isSearching.value = false
+                    return@flatMapLatest flow { emit(ApiResult.Success(emptyList())) }
+                }
+
+                flow {
+                    _isSearching.value = true
+                    emit(cityRepository.searchCities(query))
+                }
+            }
+            .onEach { result ->
+                _isSearching.value = false
+
+                when (result) {
+                    is ApiResult.Success -> {
+                        _searchResults.value = result.data
+                    }
+                    is ApiResult.Failure -> {
+                        _searchResults.value = emptyList()
+                        _event.send(
+                            AddCityScreenEvent.ShowErrorMessage(
+                                result.error.extractApiErrorMessage()
+                            )
+                        )
+                    }
+                }
+            }
+            .catch { e ->
+                if (e !is CancellationException) {
+                    _isSearching.value = false
+                    _searchResults.value = emptyList()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeSavedCities() {
+        cityRepository.getAllCities()
+            .onEach { cities ->
+                _savedCities.value = cities
+                _isLoadingCities.value = false
+
+                val missingWeatherCities = cities.filter {
+                    _citiesWithWeather.value[it.id] == null
+                }
+
+                if (missingWeatherCities.isNotEmpty()) {
+                    loadWeatherForCities(missingWeatherCities)
+                }
+            }
+            .catch {
+                _isLoadingCities.value = false
+                _event.send(AddCityScreenEvent.ShowErrorMessage("Failed to load cities"))
+            }
+            .launchIn(viewModelScope)
+    }
+
 
     private fun loadWeatherForCities(cities: List<City>) {
         viewModelScope.launch {
@@ -156,61 +203,8 @@ class AddCityScreenViewModel(
         }
     }
 
-    // In AddCityScreenViewModel.kt
-    // In AddCityScreenViewModel.kt
-    fun onSearchQueryUpdated(query: String) {
-        _searchQuery.value = query
-
-        if (query.length < 2) {
-            searchJob?.cancel()
-            _searchResults.value = emptyList()
-            _isSearching.value = false
-            return
-        }
-
-        // --- START OF THE VIEWMODEL FIX ---
-
-        // 1. Create a local, immutable copy of the query at this exact moment.
-        val queryToSearch = query
-
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            delay(400)
-            _isSearching.value = true
-            try {
-                // 2. Use the local copy. This value will not change, even if _searchQuery is cleared later.
-                val result = cityRepository.searchCities(queryToSearch)
-
-                when (result) {
-                    is ApiResult.Success -> {
-                        _searchResults.value = result.data
-                    }
-
-                    is ApiResult.Failure -> {
-                        val message = result.error.extractApiErrorMessage()
-                        _event.send(AddCityScreenEvent.ShowErrorMessage(message))
-                    }
-                }
-
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _event.send(AddCityScreenEvent.ShowErrorMessage("Failed to search cities"))
-                _searchResults.value = emptyList()
-            } finally {
-                _isSearching.value = false
-            }
-        }
-        // --- END OF THE VIEWMODEL FIX ---
-    }
-
-
     fun onClearSearch() {
-        searchJob?.cancel()
-        searchJob = null
         _searchQuery.value = ""
-        _searchResults.value = emptyList()
-        _isSearching.value = false
     }
 
     fun onAddToSavedState(suggestion: CitySearchResult) {

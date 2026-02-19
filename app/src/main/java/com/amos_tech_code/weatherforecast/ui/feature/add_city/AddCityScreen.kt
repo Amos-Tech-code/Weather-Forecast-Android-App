@@ -41,7 +41,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +49,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -77,9 +77,9 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCityScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: AddCityScreenViewModel = koinViewModel()
 ) {
-    val viewModel: AddCityScreenViewModel = koinViewModel()
     val savedCities by viewModel.savedCities.collectAsStateWithLifecycle()
     val weatherMap by viewModel.citiesWithWeather.collectAsStateWithLifecycle()
     val weatherLoadingStates by viewModel.weatherLoadingStates.collectAsStateWithLifecycle()
@@ -87,10 +87,6 @@ fun AddCityScreen(
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
     val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
     val isLoadingCities by viewModel.isLoadingCities.collectAsStateWithLifecycle()
-
-    LaunchedEffect(Unit) {
-        viewModel.onClearSearch()
-    }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
@@ -152,23 +148,32 @@ fun AddCityScreen(
                     .zIndex(2f)
             )
 
-            // Search Suggestions
-            if (searchQuery.isNotEmpty()) {
+            val isCurrentlySearching = searchQuery.isNotEmpty()
+
+            // Search Suggestions - Always in composition, visibility is toggled
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .zIndex(1f)
+                    // Use graphicsLayer for performant visibility toggling
+                    .graphicsLayer { alpha = if (isCurrentlySearching) 1f else 0f }
+            ) {
                 GlassSearchSuggestions(
                     suggestions = searchResults,
                     isLoading = isSearching,
                     onSuggestionClick = { suggestion ->
                         viewModel.onAddToSavedState(suggestion)
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .zIndex(1f)
                 )
             }
 
-            // Saved Cities Section
-            if (searchQuery.isEmpty()) {
+            // Saved Cities Section - Always in composition, visibility is toggled
+            Column(
+                modifier = Modifier
+                    // Use graphicsLayer to hide this section when searching
+                    .graphicsLayer { alpha = if (isCurrentlySearching) 0f else 1f }
+            ) {
                 Spacer(modifier = Modifier.height(20.dp))
 
                 if (isLoadingCities) {
@@ -177,6 +182,8 @@ fun AddCityScreen(
                     EmptySavedCitiesView()
                 } else {
                     LazyColumn(
+                        // Prevent the user from scrolling the list when it's hidden
+                        userScrollEnabled = !isCurrentlySearching,
                         verticalArrangement = Arrangement.spacedBy(25.dp),
                         contentPadding = PaddingValues(bottom = 40.dp)
                     ) {
@@ -189,10 +196,10 @@ fun AddCityScreen(
                                 cityWithWeather = cityWithWeather,
                                 isLoading = isWeatherLoading,
                                 onClick = {
-                                        navController.previousBackStackEntry?.savedStateHandle?.set(
-                                            "selected_city",
-                                            city
-                                        )
+                                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                                        "selected_city",
+                                        city
+                                    )
                                     navController.navigate(HomeRoute) {
                                         popUpTo(AddCityRoute) { inclusive = true }
                                         launchSingleTop = true

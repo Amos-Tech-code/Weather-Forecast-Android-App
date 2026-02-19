@@ -76,6 +76,7 @@ import com.amos_tech_code.weatherforecast.ui.navigation.AddCityRoute
 import com.amos_tech_code.weatherforecast.ui.navigation.SavedCitiesRoute
 import com.amos_tech_code.weatherforecast.ui.theme.AppTypography
 import com.amos_tech_code.weatherforecast.ui.theme.DarkBackgroundGradient
+import com.amos_tech_code.weatherforecast.ui.theme.SolidDarkBlue
 import com.amos_tech_code.weatherforecast.ui.theme.SolidPurple
 import org.koin.androidx.compose.koinViewModel
 
@@ -122,6 +123,7 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(SolidDarkBlue) // the nav bar color
     ) {
         // 1. Background Image
         Image(
@@ -145,7 +147,8 @@ fun HomeScreen(
                     containerColor = Color.Transparent,
                     sheetContent = {
                         BottomSheetContent(weatherData = data)
-                    }
+                    },
+                    modifier = Modifier.systemBarsPadding()
                 ) {
                     // Main Background Content
                     Column(
