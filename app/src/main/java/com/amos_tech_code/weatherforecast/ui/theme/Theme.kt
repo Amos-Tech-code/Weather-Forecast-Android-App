@@ -2,7 +2,6 @@ package com.amos_tech_code.weatherforecast.ui.theme
 
 import android.app.Activity
 import android.os.Build
-import android.view.View
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -15,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = SolidBrightPurple,
@@ -61,26 +60,23 @@ fun WeatherForecastTheme(
     }
 
     // Set system bar colors
+    // Set system bar colors
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
 
-            // Navigation Bar color
+            // By setting the second parameter to 'false', we are telling the system that our app will handle the colors.
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+
+            // Set both status to be transparent and navigation bar to be solid dark blue to draw behind them
+            window.statusBarColor = Color.Transparent.toArgb()
             window.navigationBarColor = SolidDarkBlue.toArgb()
 
-            // Status Bar to transparent
-            window.statusBarColor = Color.Transparent.toArgb()
-
-            // Clear LIGHT_STATUS_BAR flag to get white icons
-            window.decorView.systemUiVisibility =
-                window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
-
-            val insetsController = ViewCompat.getWindowInsetsController(view)
-
-            insetsController?.isAppearanceLightStatusBars = false
-
-            insetsController?.isAppearanceLightNavigationBars = false
+            // Handle the appearance of the status and navigation bar icons
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = false
+            insetsController.isAppearanceLightNavigationBars = false
         }
     }
 

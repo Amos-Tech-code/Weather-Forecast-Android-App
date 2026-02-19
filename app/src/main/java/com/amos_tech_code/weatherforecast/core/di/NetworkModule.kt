@@ -21,7 +21,6 @@ val networkModule = module {
     // Gson
     single {
         GsonBuilder()
-            .setLenient()
             .serializeNulls()
             .create()
     }

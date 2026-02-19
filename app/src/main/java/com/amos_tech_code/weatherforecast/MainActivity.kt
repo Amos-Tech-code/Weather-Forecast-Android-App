@@ -24,8 +24,8 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         installSplashScreen()
+        enableEdgeToEdge()
         setContent {
             WeatherForecastTheme {
                 val startDestination = if (weatherAppPreferences.isLocationSet()) HomeRoute else AddCityRoute

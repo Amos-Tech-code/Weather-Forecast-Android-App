@@ -11,8 +11,6 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import javax.net.ssl.SSLException
-import javax.net.ssl.SSLHandshakeException
 
 private val connectivityObserver: ConnectivityObserver by inject(ConnectivityObserver::class.java)
 
@@ -58,11 +56,13 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
 
 }
 
+private val json = Json { ignoreUnknownKeys = true }
+
 private fun <T> parseErrorBody(response: Response<T>): String {
     return try {
         val errorBody = response.errorBody()?.string()
         if (!errorBody.isNullOrBlank()) {
-            val errorResponse = Json { ignoreUnknownKeys = true }
+            val errorResponse = json
                 .decodeFromString(OpenMeteoErrorResponseDto.serializer(), errorBody)
             errorResponse.reason
         } else {

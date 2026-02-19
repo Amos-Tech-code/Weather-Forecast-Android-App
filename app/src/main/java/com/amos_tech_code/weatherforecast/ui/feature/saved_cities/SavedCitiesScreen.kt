@@ -103,12 +103,12 @@ fun SavedCitiesScreen(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) {
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(Color(0xFF2E335A), Color(0xFF1C1B33))))
-                .padding(it)
+                .padding(innerPadding)
         ) {
 
             Column(
@@ -183,7 +183,7 @@ private fun SavedCitiesTopBar(
                modifier = Modifier.size(40.dp)
            )
        },
-       colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+       colors = TopAppBarDefaults.topAppBarColors(
            containerColor = Color.Transparent,
        )
    )

@@ -18,20 +18,35 @@ android {
         applicationId = "com.amos_tech_code.weatherforecast"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 5
+        versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+
+        create("debugWithMinify") {
+            // Inherit settings from the 'debug' build type
+            initWith(getByName("debug"))
+
+            // Override with release settings for shrinking and obfuscation
+            isMinifyEnabled = true
+            isShrinkResources = true // NB: isShrinkResources only works on minified builds.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

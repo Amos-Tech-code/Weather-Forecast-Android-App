@@ -31,7 +31,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,7 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,7 +56,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,7 +68,6 @@ import com.amos_tech_code.weatherforecast.domain.model.City
 import com.amos_tech_code.weatherforecast.domain.model.CitySearchResult
 import com.amos_tech_code.weatherforecast.domain.model.CityWithWeather
 import com.amos_tech_code.weatherforecast.ui.components.EmptySavedCitiesView
-import com.amos_tech_code.weatherforecast.ui.components.GlassButton
 import com.amos_tech_code.weatherforecast.ui.components.LoadingView
 import com.amos_tech_code.weatherforecast.ui.navigation.AddCityRoute
 import com.amos_tech_code.weatherforecast.ui.navigation.HomeRoute
@@ -80,9 +77,9 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCityScreen(
-    navController: NavController,
-    viewModel: AddCityScreenViewModel = koinViewModel()
+    navController: NavController
 ) {
+    val viewModel: AddCityScreenViewModel = koinViewModel()
     val savedCities by viewModel.savedCities.collectAsStateWithLifecycle()
     val weatherMap by viewModel.citiesWithWeather.collectAsStateWithLifecycle()
     val weatherLoadingStates by viewModel.weatherLoadingStates.collectAsStateWithLifecycle()
@@ -91,10 +88,8 @@ fun AddCityScreen(
     val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
     val isLoadingCities by viewModel.isLoadingCities.collectAsStateWithLifecycle()
 
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.onClearSearch()
-        }
+    LaunchedEffect(Unit) {
+        viewModel.onClearSearch()
     }
 
     ObserveAsEvents(viewModel.event) { event ->

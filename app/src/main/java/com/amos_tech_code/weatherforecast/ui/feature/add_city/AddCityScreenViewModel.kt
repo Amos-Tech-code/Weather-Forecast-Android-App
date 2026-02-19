@@ -1,8 +1,8 @@
 package com.amos_tech_code.weatherforecast.ui.feature.add_city
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.weatherforecast.core.network.ApiError
 import com.amos_tech_code.weatherforecast.core.network.ApiResult
 import com.amos_tech_code.weatherforecast.core.network.extractApiErrorMessage
 import com.amos_tech_code.weatherforecast.domain.model.City
@@ -11,27 +11,18 @@ import com.amos_tech_code.weatherforecast.domain.model.CityWeather
 import com.amos_tech_code.weatherforecast.domain.model.CityWithWeather
 import com.amos_tech_code.weatherforecast.domain.repository.CityRepository
 import com.amos_tech_code.weatherforecast.domain.repository.WeatherRepository
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -64,7 +55,6 @@ class AddCityScreenViewModel(
     private val _searchResults = MutableStateFlow<List<CitySearchResult>>(emptyList())
     val searchResults: StateFlow<List<CitySearchResult>> = _searchResults.asStateFlow()
 
-
     // Events
     private val _event = Channel<AddCityScreenEvent>()
     val event = _event.receiveAsFlow()
@@ -73,36 +63,12 @@ class AddCityScreenViewModel(
     private val _weatherLoadingStates = MutableStateFlow<Set<String>>(emptySet())
     val weatherLoadingStates: StateFlow<Set<String>> = _weatherLoadingStates.asStateFlow()
 
+    private var searchJob: Job? = null
+
     init {
         loadSavedCitiesWithWeather()
-        viewModelScope.launch {
-            @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-            _searchQuery
-                .debounce(400)
-                .map { it.trim() }
-                //.distinctUntilChanged()
-                .flatMapLatest { query ->
-                    if (query.length < 2) {
-                        flowOf(emptyList())
-                    } else {
-                        flow {
-                            _isSearching.value = true
-                            try {
-                                when (val result = cityRepository.searchCities(query)) {
-                                    is ApiResult.Success -> emit(result.data)
-                                    is ApiResult.Failure -> emit(emptyList())
-                                }
-                            } finally {
-                                _isSearching.value = false
-                            }
-                        }
-                    }
-                }
-                .collect { results ->
-                    _searchResults.value = results
-                }
-        }
     }
+
 
     private fun loadSavedCitiesWithWeather() {
         viewModelScope.launch {
@@ -190,21 +156,65 @@ class AddCityScreenViewModel(
         }
     }
 
-    // Search results state
-
+    // In AddCityScreenViewModel.kt
+    // In AddCityScreenViewModel.kt
     fun onSearchQueryUpdated(query: String) {
         _searchQuery.value = query
+
+        if (query.length < 2) {
+            searchJob?.cancel()
+            _searchResults.value = emptyList()
+            _isSearching.value = false
+            return
+        }
+
+        // --- START OF THE VIEWMODEL FIX ---
+
+        // 1. Create a local, immutable copy of the query at this exact moment.
+        val queryToSearch = query
+
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(400)
+            _isSearching.value = true
+            try {
+                // 2. Use the local copy. This value will not change, even if _searchQuery is cleared later.
+                val result = cityRepository.searchCities(queryToSearch)
+
+                when (result) {
+                    is ApiResult.Success -> {
+                        _searchResults.value = result.data
+                    }
+
+                    is ApiResult.Failure -> {
+                        val message = result.error.extractApiErrorMessage()
+                        _event.send(AddCityScreenEvent.ShowErrorMessage(message))
+                    }
+                }
+
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _event.send(AddCityScreenEvent.ShowErrorMessage("Failed to search cities"))
+                _searchResults.value = emptyList()
+            } finally {
+                _isSearching.value = false
+            }
+        }
+        // --- END OF THE VIEWMODEL FIX ---
     }
 
+
     fun onClearSearch() {
+        searchJob?.cancel()
+        searchJob = null
         _searchQuery.value = ""
         _searchResults.value = emptyList()
         _isSearching.value = false
     }
 
     fun onAddToSavedState(suggestion: CitySearchResult) {
-        _searchQuery.value = ""
-        _searchResults.value = emptyList()
+        onClearSearch()
 
         val city = City(
             id = suggestion.id,
