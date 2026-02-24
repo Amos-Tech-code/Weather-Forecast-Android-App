@@ -10,7 +10,7 @@ val viewModelModule = module {
 
     viewModel { HomeViewModel(get(), get()) }
 
-    viewModel { AddCityScreenViewModel(get(), get()) }
+    viewModel { AddCityScreenViewModel(get(), get(), get()) }
 
     viewModel { SavedCitiesViewModel(get()) }
 

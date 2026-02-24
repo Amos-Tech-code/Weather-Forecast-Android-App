@@ -56,11 +56,10 @@
 -keep class com.amos_tech_code.weatherforecast.data.remote.dto.** { *; }
 
 #################################################################
-# Domain Models (Used by Gson for SharedPreferences)
+# Domain Models (Used by UI and potentially serialization)
 #################################################################
 # This is the critical fix. It prevents ProGuard from renaming the
-# fields of your domain models, which is necessary for serialization
-# and deserialization with Gson (e.g., for SharedPreferences).
+# classes and fields of your domain models.
 -keep class com.amos_tech_code.weatherforecast.domain.model.** { *; }
 
 ##########################################
@@ -98,4 +97,3 @@
 -keepclassmembers class * implements android.os.Parcelable {
   *;
 }
-

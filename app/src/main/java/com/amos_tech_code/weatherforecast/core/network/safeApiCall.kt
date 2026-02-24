@@ -25,7 +25,7 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
 
     // Make the API call
     return try {
-        val response = withContext(Dispatchers.IO) { apiCall() }
+        val response =  apiCall()
         if (response.isSuccessful) {
             val body = response.body()
             if (body != null) {

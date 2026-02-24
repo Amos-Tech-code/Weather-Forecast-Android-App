@@ -11,9 +11,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 // Mapper for full weather data
-fun WeatherResponseDto.toDomainModel(): WeatherData {
+fun WeatherResponseDto.toDomainModel(cityName: String): WeatherData {
     return WeatherData(
-        location = timezone.split("/").lastOrNull() ?: "Unknown Location",
+        location = cityName,
         currentTemp = current.temperature_2m.toInt(),
         condition = getWeatherCondition(current.weather_code, current.is_day),
         highTemp = daily.temperature_2m_max.firstOrNull()?.toInt() ?: 0,

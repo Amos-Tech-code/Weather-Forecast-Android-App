@@ -132,7 +132,7 @@ fun SavedCitiesScreen(
                             items(uiState.cities, key = { it.city.id }) { city ->
                                 SavedCityWeatherCard(
                                     cityWeather = city,
-                                    onClick = { viewModel.onAddToSavedState(city) },
+                                    onClick = { viewModel.onCitySelected(city) },
                                     onRemoveClick = { viewModel.removeCity(city.city.id) },
                                 )
                             }

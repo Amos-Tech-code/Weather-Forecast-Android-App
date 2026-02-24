@@ -95,10 +95,6 @@ fun AddCityScreen(
             }
             is AddCityScreenEvent.CityAdded -> {
                 // Navigate back to home with the new city
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "selected_city",
-                    event.city
-                )
                 navController.navigate(HomeRoute) {
                     popUpTo(AddCityRoute) { inclusive = true }
                     launchSingleTop = true
@@ -163,7 +159,7 @@ fun AddCityScreen(
                     suggestions = searchResults,
                     isLoading = isSearching,
                     onSuggestionClick = { suggestion ->
-                        viewModel.onAddToSavedState(suggestion)
+                        viewModel.onAddCity(suggestion)
                     },
                 )
             }
@@ -200,10 +196,7 @@ fun AddCityScreen(
                                         "selected_city",
                                         city
                                     )
-                                    navController.navigate(HomeRoute) {
-                                        popUpTo(AddCityRoute) { inclusive = true }
-                                        launchSingleTop = true
-                                    }
+                                    navController.popBackStack()
                                 },
                             )
                         }

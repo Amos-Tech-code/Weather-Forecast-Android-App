@@ -1,8 +1,13 @@
 package com.amos_tech_code.weatherforecast.data.local.shared_prefs
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.amos_tech_code.weatherforecast.domain.model.City
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
 
 class WeatherAppPreferences(context: Context) {
 
@@ -21,6 +26,9 @@ class WeatherAppPreferences(context: Context) {
     fun isLocationSet(): Boolean =
         prefs.contains(CITY_LOCATION_LAT) && prefs.contains(CITY_LOCATION_LONG)
 
+    /**
+     * Store the last accessed city
+     */
     fun saveCityLocationData(city: City) {
         prefs.edit {
             putString(LAST_CITY_ID, city.id)
@@ -31,8 +39,30 @@ class WeatherAppPreferences(context: Context) {
         }
     }
 
-    fun getCityLocationData(): City? {
-        // Check if the essential data exists first.
+    /**
+     * Observes the saved city data and emits a new City object whenever it changes.
+     * Emits null if no valid city is saved.
+     */
+    fun getCityLocationData(): Flow<City?> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == LAST_CITY_ID || key == CITY_NAME) { // Listen for relevant key changes
+                trySend(readCityData())
+            }
+        }
+
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+
+        // Emit the initial value
+        trySend(readCityData())
+
+        // Unregister the listener when the flow is cancelled
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.conflate() // Use conflate to only deliver the latest value to slow collectors
+
+    /**
+     * Helper function to read the raw data from SharedPreferences.
+     */
+    private fun readCityData(): City? {
         if (!prefs.contains(LAST_CITY_ID)) {
             return null
         }
@@ -43,7 +73,6 @@ class WeatherAppPreferences(context: Context) {
         val cityName = prefs.getString(CITY_NAME, null)
         val cityCountry = prefs.getString(CITY_COUNTRY, null)
 
-        // Ensure we have a valid city to return
         return if (cityId != null && cityName != null && cityCountry != null) {
             City(
                 id = cityId,

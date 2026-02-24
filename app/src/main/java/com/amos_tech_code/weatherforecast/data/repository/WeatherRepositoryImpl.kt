@@ -30,7 +30,7 @@ class WeatherRepositoryImpl(
 
        if (result is ApiResult.Success) {
            val weatherResponse = result.data
-           val weatherData = weatherResponse.toDomainModel()
+           val weatherData = weatherResponse.toDomainModel(city.name)
 
            // Check if city already exists in the database
            withContext(Dispatchers.IO) {

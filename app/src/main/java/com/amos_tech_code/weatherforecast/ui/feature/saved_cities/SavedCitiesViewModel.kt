@@ -4,11 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.weatherforecast.domain.model.City
 import com.amos_tech_code.weatherforecast.domain.model.CityWeather
-import com.amos_tech_code.weatherforecast.domain.model.CityWithWeather
 import com.amos_tech_code.weatherforecast.domain.repository.CityRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -53,7 +51,7 @@ class SavedCitiesViewModel(
         _event.trySend(SavedCitiesScreenEvent.AddNewCity)
     }
 
-    fun onAddToSavedState(cityWeather: CityWeather) {
+    fun onCitySelected(cityWeather: CityWeather) {
         viewModelScope.launch {
             val city = City(
                 id = cityWeather.city.id,

@@ -18,7 +18,7 @@ android {
         applicationId = "com.amos_tech_code.weatherforecast"
         minSdk = 24
         targetSdk = 36
-        versionCode = 5
+        versionCode = 6
         versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -32,9 +32,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Enable native debug symbols for Play Console
+            ndk {
+                debugSymbolLevel = "FULL" // NONE, SYMBOL_TABLE, FULL
+            }
         }
 
-        /*
         create("debugWithMinify") {
             // Inherit settings from the 'debug' build type
             initWith(getByName("debug"))
@@ -47,8 +50,6 @@ android {
                 "proguard-rules.pro"
             )
         }
-
-         */
 
     }
     compileOptions {

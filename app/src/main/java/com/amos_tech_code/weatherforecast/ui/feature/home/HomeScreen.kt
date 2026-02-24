@@ -110,12 +110,16 @@ fun HomeScreen(
     val selectedTab = remember { mutableIntStateOf(0) }
 
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-    val selectedCity = savedStateHandle?.getStateFlow<City?>("selected_city", null)?.collectAsStateWithLifecycle()
+    val newCityResult = savedStateHandle?.get<City>("selected_city")
 
-    LaunchedEffect(selectedCity?.value) {
-        selectedCity?.value?.let {
-            viewModel.updateLocation(it)
-            // Clear the value after processing to prevent re-triggering
+    LaunchedEffect(newCityResult) {
+        newCityResult?.let { city ->
+            // A new city was passed back from AddCityScreen.
+            // Update the ViewModel with this new city.
+            viewModel.updateLocation(city)
+
+            // Important: Remove the city from the SavedStateHandle
+            // to prevent re-triggering this logic on configuration changes.
             savedStateHandle.remove<City>("selected_city")
         }
     }

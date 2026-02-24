@@ -1,6 +1,7 @@
 package com.amos_tech_code.weatherforecast.ui.feature.home
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.weatherforecast.core.network.ApiResult
 import com.amos_tech_code.weatherforecast.core.network.extractApiErrorMessage
@@ -10,6 +11,10 @@ import com.amos_tech_code.weatherforecast.domain.repository.WeatherRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
@@ -26,21 +31,28 @@ class HomeViewModel(
 
     private var currentLocation: City? = null
 
+
     init {
-        currentLocation = weatherAppPreferences.getCityLocationData()
-        currentLocation?.let { fetchWeatherData(it) }
+        weatherAppPreferences.getCityLocationData()
+            .filterNotNull() // We only care about non-null city values
+            .distinctUntilChanged() // Don't re-fetch if the city is the same
+            .onEach { city ->
+                currentLocation = city
+                fetchWeatherData(city)
+            }
+            .launchIn(viewModelScope)
     }
 
     fun updateLocation(city: City) {
 
         // Update current location
-        this.currentLocation = city
+        currentLocation = city
 
         // Save last weather location search
         weatherAppPreferences.saveCityLocationData(city)
 
         // Fetch weather data for the new location
-        currentLocation?.let { fetchWeatherData(city) }
+        fetchWeatherData(city)
     }
 
 

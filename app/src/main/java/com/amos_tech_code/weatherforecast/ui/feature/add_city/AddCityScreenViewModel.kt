@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.weatherforecast.core.network.ApiResult
 import com.amos_tech_code.weatherforecast.core.network.extractApiErrorMessage
+import com.amos_tech_code.weatherforecast.data.local.shared_prefs.WeatherAppPreferences
 import com.amos_tech_code.weatherforecast.domain.model.City
 import com.amos_tech_code.weatherforecast.domain.model.CitySearchResult
 import com.amos_tech_code.weatherforecast.domain.model.CityWeather
@@ -33,7 +34,8 @@ import kotlinx.coroutines.launch
 
 class AddCityScreenViewModel(
     private val cityRepository: CityRepository,
-    private val weatherRepository: WeatherRepository
+    private val weatherRepository: WeatherRepository,
+    private val weatherAppPreferences: WeatherAppPreferences
 ) : ViewModel() {
 
     // Saved cities state - first we show just cities, then load weather
@@ -207,7 +209,7 @@ class AddCityScreenViewModel(
         _searchQuery.value = ""
     }
 
-    fun onAddToSavedState(suggestion: CitySearchResult) {
+    fun onAddCity(suggestion: CitySearchResult) {
         onClearSearch()
 
         val city = City(
@@ -218,9 +220,11 @@ class AddCityScreenViewModel(
             longitude = suggestion.longitude
         )
         viewModelScope.launch {
+            weatherAppPreferences.saveCityLocationData(city)
             _event.send(AddCityScreenEvent.CityAdded(city))
         }
     }
+
 
 
 }

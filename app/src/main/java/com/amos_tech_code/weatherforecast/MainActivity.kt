@@ -24,8 +24,13 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // CRITICAL ORDER: Call installSplashScreen() BEFORE enableEdgeToEdge()
+        // If swapped, Android 12+ might show a ghost Action Bar/Top Bar background.
         installSplashScreen()
+        // Now it's safe to go edge-to-edge for that immersive look
         enableEdgeToEdge()
+
         setContent {
             WeatherForecastTheme {
                 val startDestination = if (weatherAppPreferences.isLocationSet()) HomeRoute else AddCityRoute
