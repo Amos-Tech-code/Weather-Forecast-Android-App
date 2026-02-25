@@ -18,8 +18,8 @@ android {
         applicationId = "com.amos_tech_code.weatherforecast"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.0.4"
+        versionCode = 9
+        versionName = "1.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -38,6 +38,7 @@ android {
             }
         }
 
+        /*
         create("debugWithMinify") {
             // Inherit settings from the 'debug' build type
             initWith(getByName("debug"))
@@ -50,6 +51,7 @@ android {
                 "proguard-rules.pro"
             )
         }
+         */
 
     }
     compileOptions {

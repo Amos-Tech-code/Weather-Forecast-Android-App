@@ -2,7 +2,6 @@ package com.amos_tech_code.weatherforecast.ui.feature.home
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -35,12 +33,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amos_tech_code.weatherforecast.ui.theme.AppTypography
-import com.amos_tech_code.weatherforecast.ui.theme.SolidBrightPurple
 
 @Composable
 fun WeatherDetailCardContainer(
@@ -61,7 +57,7 @@ fun WeatherDetailCardContainer(
                 Spacer(Modifier.height(8.dp))
                 Text(value, style = AppTypography.title2Bold, color = Color.White)
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(24.dp))
             content()
         }
     }
@@ -119,7 +115,9 @@ fun AirQualityCard(
                     .height(12.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Canvas(modifier = Modifier.fillMaxWidth().height(6.dp)) {
+                Canvas(modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)) {
                     val trackHeight = size.height
                     // Draw Gradient Track
                     drawRoundRect(
@@ -196,7 +194,9 @@ fun UVIndexCard(
                 .height(12.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            Canvas(modifier = Modifier.fillMaxWidth().height(4.dp)) {
+            Canvas(modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)) {
                 // 1. Draw the Gradient Track
                 drawRoundRect(
                     brush = Brush.horizontalGradient(
@@ -227,7 +227,9 @@ fun UVIndexCard(
 @Composable
 fun SunriseCard(modifier: Modifier, sunrise: String, sunset: String) {
     WeatherDetailCardContainer(modifier, title = "SUNRISE", value = sunrise) {
-        Box(modifier = Modifier.fillMaxWidth().height(40.dp)) {
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val width = size.width
                 val height = size.height
@@ -250,7 +252,6 @@ fun SunriseCard(modifier: Modifier, sunrise: String, sunset: String) {
     }
 }
 
-
 @Composable
 fun WindCard(modifier: Modifier, speed: String, direction: String? = null, unit: String) {
     WeatherDetailCardContainer(modifier, title = "WIND", value = "") {
@@ -260,12 +261,16 @@ fun WindCard(modifier: Modifier, speed: String, direction: String? = null, unit:
                 .weight(1f),
             contentAlignment = Alignment.Center
         ) {
+            val compassSize = 100.dp // Define a single size for the compass
+
             // Compass Circles
-            Canvas(modifier = Modifier.size(180.dp)) {
+            Canvas(modifier = Modifier.size(compassSize)) {
+                // Outer circle
                 drawCircle(
                     color = Color.White.copy(0.1f),
                     style = Stroke(width = 1.dp.toPx())
                 )
+                // Inner circle
                 drawCircle(
                     color = Color.White.copy(0.05f),
                     radius = size.width / 3,
@@ -273,31 +278,63 @@ fun WindCard(modifier: Modifier, speed: String, direction: String? = null, unit:
                 )
             }
 
-            // Cardinal Directions
-            Text("N", modifier = Modifier.align(Alignment.TopCenter).padding(top = 4.dp), color = Color.White, fontSize = 10.sp)
-            Text("S", modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp), color = Color.White, fontSize = 10.sp)
-            Text("W", modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp), color = Color.White, fontSize = 10.sp)
-            Text("E", modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp), color = Color.White, fontSize = 10.sp)
-
-            // Center Speed
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(speed, style = AppTypography.title3Bold, color = Color.White)
-                Text(unit, style = AppTypography.caption2, color = Color.White.copy(0.6f))
-            }
-
-            // Wind Arrow Indicator
-            Icon(
-                imageVector = Icons.Default.ArrowUpward, // Arrow pointing to direction
-                contentDescription = null,
-                tint = Color.White,
+            // Cardinal Directions positioned around the compass
+            val cardinalPadding = (compassSize / 2) + 8.dp
+            Text(
+                "N",
                 modifier = Modifier
-                    .size(24.dp)
-                    .rotate(45f)
+                    .align(Alignment.TopCenter)
+                    .padding(bottom = cardinalPadding),
+                color = Color.White,
+                fontSize = 10.sp
             )
+            Text(
+                "S",
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(top = cardinalPadding),
+                color = Color.White,
+                fontSize = 10.sp
+            )
+            Text(
+                "W",
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(end = cardinalPadding),
+                color = Color.White,
+                fontSize = 10.sp
+            )
+            Text(
+                "E",
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(start = cardinalPadding),
+                color = Color.White,
+                fontSize = 10.sp
+            )
+
+
+            // Stack the Speed and Arrow inside their own Box for proper alignment
+            Box(contentAlignment = Alignment.Center) {
+                // Center Speed
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(speed, style = AppTypography.title3Bold, color = Color.White)
+                    Text(unit, style = AppTypography.caption2, color = Color.White.copy(0.6f))
+                }
+
+                // Wind Arrow Indicator
+                Icon(
+                    imageVector = Icons.Default.ArrowUpward,
+                    contentDescription = "Wind direction",
+                    tint = Color.White.copy(0.6f), // Use a contrasting color to make it visible
+                    modifier = Modifier
+                        .size(50.dp) // Make the arrow container the size of the compass
+                        .rotate(45f) // The rotation determines the direction
+                )
+            }
         }
     }
 }
-
 
 @Composable
 fun PressureCard(

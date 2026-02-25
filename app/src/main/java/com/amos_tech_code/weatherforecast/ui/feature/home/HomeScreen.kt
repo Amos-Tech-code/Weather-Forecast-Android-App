@@ -1,6 +1,7 @@
 package com.amos_tech_code.weatherforecast.ui.feature.home
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -46,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +80,7 @@ import com.amos_tech_code.weatherforecast.ui.theme.AppTypography
 import com.amos_tech_code.weatherforecast.ui.theme.DarkBackgroundGradient
 import com.amos_tech_code.weatherforecast.ui.theme.SolidDarkBlue
 import com.amos_tech_code.weatherforecast.ui.theme.SolidPurple
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 
@@ -101,6 +104,7 @@ fun HomeScreen(
     }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(
             initialValue = SheetValue.PartiallyExpanded
@@ -111,6 +115,12 @@ fun HomeScreen(
 
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
     val newCityResult = savedStateHandle?.get<City>("selected_city")
+
+    BackHandler(enabled = !isSheetPartiallyExpanded) {
+        scope.launch {
+            scaffoldState.bottomSheetState.partialExpand()
+        }
+    }
 
     LaunchedEffect(newCityResult) {
         newCityResult?.let { city ->

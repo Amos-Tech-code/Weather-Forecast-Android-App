@@ -64,9 +64,6 @@ fun WeatherForecastTheme(
         SideEffect {
             val window = (view.context as Activity).window
 
-            // By setting the second parameter to 'false', we are telling the system that our app will handle the colors.
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-
             // Handle the appearance of the status and navigation bar icons
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = false
