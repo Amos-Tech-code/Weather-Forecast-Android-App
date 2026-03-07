@@ -13,6 +13,11 @@ A beautiful weather forecast app built with Jetpack Compose.
 
 Application screenshots will be uploaded once UI stabilization is complete.
 
+| Screen | Preview |
+|------|------|
+| Home | Coming soon |
+| Forecast | Coming soon |
+
 ## Tech Stack
 
 - Kotlin
