@@ -3,6 +3,10 @@ package com.amos_tech_code.weatherforecast.ui.feature.home
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
@@ -10,6 +14,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +33,10 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -54,11 +64,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -80,6 +93,7 @@ import com.amos_tech_code.weatherforecast.ui.theme.AppTypography
 import com.amos_tech_code.weatherforecast.ui.theme.DarkBackgroundGradient
 import com.amos_tech_code.weatherforecast.ui.theme.SolidDarkBlue
 import com.amos_tech_code.weatherforecast.ui.theme.SolidPurple
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import kotlin.math.ln
@@ -272,6 +286,85 @@ private fun BottomSheetContent(
     weatherData: WeatherData
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current // Get haptic feedback instance
+
+    // Create LazyListState for each tab
+    val hourlyListState = rememberLazyListState()
+    val weeklyListState = rememberLazyListState()
+
+    val nowIndex = weatherData.hourlyForecast.indexOfFirst { it.time == "Now" }
+    val todayIndex = weatherData.weeklyForecast.indexOfFirst { it.day == "Today" }
+
+    // Track if this is first load
+    val isFirstLoad = remember { mutableStateOf(true) }
+
+    // Scroll to Now when bottom sheet is first opened or tab changes
+    LaunchedEffect(selectedTab, weatherData, nowIndex, todayIndex) {
+        when (selectedTab) {
+            0 -> {
+                if (nowIndex >= 0) {
+                    // Longer delay for first load, shorter for tab switches
+                    val delayTime = if (isFirstLoad.value) 300 else 150
+                    isFirstLoad.value = false
+
+                    delay(delayTime.toLong())
+
+                    // Check if item is already visible to avoid unnecessary scrolling
+                    val visibleItems = hourlyListState.layoutInfo.visibleItemsInfo
+                    val isNowVisible = visibleItems.any { it.index == nowIndex }
+
+                    if (!isNowVisible) {
+                        // Smooth scroll with animation
+                        hourlyListState.animateScrollToItem(
+                            index = nowIndex,
+                            scrollOffset = -50 // Slight offset to give some context
+                        )
+                    }
+                }
+            }
+            1 -> {
+                if (todayIndex >= 0) {
+                    val delayTime = if (isFirstLoad.value) 300 else 150
+                    isFirstLoad.value = false
+
+                    delay(delayTime.toLong())
+
+                    val visibleItems = weeklyListState.layoutInfo.visibleItemsInfo
+                    val isTodayVisible = visibleItems.any { it.index == todayIndex }
+
+                    if (!isTodayVisible) {
+                        weeklyListState.animateScrollToItem(
+                            index = todayIndex,
+                            scrollOffset = -50
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Add scroll behavior for when user manually scrolls
+    // This creates a haptic feedback when reaching the highlighted item
+    LaunchedEffect(hourlyListState.firstVisibleItemIndex, selectedTab) {
+        if (selectedTab == 0) {
+            val firstVisible = hourlyListState.firstVisibleItemIndex
+            if (firstVisible == nowIndex) {
+                // Give subtle haptic feedback when "Now" comes into view
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        }
+    }
+
+    // Also for weekly tab
+    LaunchedEffect(weeklyListState.firstVisibleItemIndex, selectedTab) {
+        if (selectedTab == 1) {
+            val firstVisible = weeklyListState.firstVisibleItemIndex
+            if (firstVisible == todayIndex) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -279,75 +372,139 @@ private fun BottomSheetContent(
             .background(Color(0xFF2E335A).copy(alpha = 0.9f))
             .verticalScroll(rememberScrollState())
     ) {
-        // Custom Drag Handle
-        Box(Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp), contentAlignment = Alignment.Center) {
-            Box(Modifier
-                .size(40.dp, 4.dp)
-                .background(Color.Black.copy(0.3f), CircleShape))
+        // Custom Drag Handle with smoother appearance
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                Modifier
+                    .size(40.dp, 4.dp)
+                    .background(Color.Black.copy(0.3f), CircleShape)
+            )
         }
 
-        // Tabs with indicator
+        // Tabs with smoother indicator animation
         TabLayout(
             selectedTab = selectedTab,
             onTabSelected = { tabIndex ->
-                selectedTab = tabIndex
+                // Cancel any ongoing scroll animations when switching tabs
+                scope.launch {
+                    if (selectedTab == 0) {
+                        hourlyListState.scrollToItem(0) // Reset position quickly
+                    } else {
+                        weeklyListState.scrollToItem(0)
+                    }
+                    selectedTab = tabIndex
+                }
             }
         )
 
-        HorizontalDivider(color = Color.White.copy(0.1f))
+        HorizontalDivider(
+            color = Color.White.copy(0.1f),
+            thickness = 1.dp
+        )
 
-        // Hourly/Weekly section
-        LazyRow(
-            contentPadding = PaddingValues(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (selectedTab == 0) {
-                items(weatherData.hourlyForecast) { forecast ->
-                    ForecastCard(
-                        forecast = forecast,
-                        isActive = forecast.time == "Now" // Highlight "Now"
-                    )
+        // Hourly/Weekly section with smoother scrolling
+        when (selectedTab) {
+            0 -> {
+                LazyRow(
+                    state = hourlyListState,
+                    contentPadding = PaddingValues(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    flingBehavior = ScrollableDefaults.flingBehavior() // Smoother fling
+                ) {
+                    itemsIndexed(
+                        items = weatherData.hourlyForecast,
+                        key = { index, forecast -> "hourly_${forecast.time}_$index" }
+                    ) { index, forecast ->
+                        val isActive = forecast.time == "Now"
+                        ForecastCard(
+                            forecast = forecast,
+                            isActive = isActive,
+                            modifier = Modifier.animateItem() // Smooth reordering if any
+                        )
+                    }
                 }
-            } else {
-                items(weatherData.weeklyForecast) { day ->
-                    // For weekly forecast, highlight "Today"
-                    ForecastCard(
-                        forecast = HourlyForecast(
-                            day.day,
-                            day.highTemp,
-                            day.iconRes,
-                            day.precipitation
-                        ),
-                        isActive = day.day == "Today" // Highlight "Today"
-                    )
+            }
+            1 -> {
+                LazyRow(
+                    state = weeklyListState,
+                    contentPadding = PaddingValues(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    flingBehavior = ScrollableDefaults.flingBehavior()
+                ) {
+                    itemsIndexed(
+                        items = weatherData.weeklyForecast,
+                        key = { index, day -> "weekly_${day.day}_$index" }
+                    ) { index, day ->
+                        val isActive = day.day == "Today"
+                        ForecastCard(
+                            forecast = HourlyForecast(
+                                day.day,
+                                day.highTemp,
+                                day.iconRes,
+                                day.precipitation
+                            ),
+                            isActive = isActive,
+                            modifier = Modifier.animateItem()
+                        )
+                    }
                 }
             }
         }
 
+        // Smooth spacer transition
+        Spacer(
+            modifier = Modifier
+                .height(32.dp)
+                .fillMaxWidth()
+        )
+
         // Weather Details Grid
         WeatherDetailsGrid(weatherData.weatherDetails)
-        Spacer(modifier = Modifier.height(32.dp))
+
+        // Extra bottom padding for better scrolling experience
+        Spacer(
+            modifier = Modifier
+                .height(16.dp)
+                .fillMaxWidth()
+        )
     }
 }
+
 
 @Composable
 fun ForecastCard(
     forecast: HourlyForecast,
-    isActive: Boolean = false
+    isActive: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
-    val backgroundColor = if (isActive) SolidPurple else Color(0xFF48319D).copy(alpha = 0.3f)
-    val borderColor = if (isActive) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.2f)
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isActive) SolidPurple else Color(0xFF48319D).copy(alpha = 0.3f),
+        animationSpec = tween(durationMillis = 300)
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isActive) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.2f),
+        animationSpec = tween(durationMillis = 300)
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isActive) 10.dp else 0.dp,
+        animationSpec = tween(durationMillis = 300)
+    )
 
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .width(60.dp)
             .height(146.dp),
         shape = RoundedCornerShape(50.dp),
         color = backgroundColor,
         border = BorderStroke(1.dp, borderColor),
-        shadowElevation = if (isActive) 10.dp else 0.dp
+        shadowElevation = elevation
     ) {
         Column(
             modifier = Modifier
@@ -356,6 +513,7 @@ fun ForecastCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // Time text with smooth color transition
             Text(
                 text = forecast.time,
                 style = MaterialTheme.typography.labelLarge.copy(
@@ -366,10 +524,18 @@ fun ForecastCard(
             )
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Icon with scale animation when active
+                val scale by animateFloatAsState(
+                    targetValue = if (isActive) 1.1f else 1f,
+                    animationSpec = tween(durationMillis = 300)
+                )
+
                 Image(
                     painter = painterResource(id = forecast.iconRes),
                     contentDescription = null,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier
+                        .size(32.dp)
+                        .scale(scale)
                 )
 
                 if (forecast.precipitation != null) {
@@ -383,6 +549,7 @@ fun ForecastCard(
                 }
             }
 
+            // Temperature with smooth color transition
             Text(
                 text = "${forecast.temp}°",
                 style = MaterialTheme.typography.titleLarge.copy(
