@@ -19,7 +19,6 @@ A beautiful weather forecast app built with Jetpack Compose.
 
 This project follows **MVVM architecture** with a clean separation between UI, domain, and data layers.
 
-
 ## Tech Stack
 
 - Kotlin
