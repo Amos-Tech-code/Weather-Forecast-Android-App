@@ -73,13 +73,17 @@ fun AirQualityCard(
     title: String,
     value: String,
     progress: Float,
+    aqiValue: Int, // Add this parameter
     modifier: Modifier = Modifier
 ) {
+    var showDetails by remember { mutableStateOf(false) }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(160.dp),
-        color = Color(0xFF48319D).copy(alpha = 0.2f), // Glass background
+            .height(if (showDetails) 240.dp else 160.dp)
+            .clickable { showDetails = !showDetails },
+        color = Color(0xFF48319D).copy(alpha = 0.2f),
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
     ) {
@@ -88,18 +92,31 @@ fun AirQualityCard(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Header Row
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Grain, // Your icon
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.5f),
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(Modifier.width(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Grain,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.5f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+                }
+
+                // Show AQI value
                 Text(
-                    text = title,
+                    text = "AQI: $aqiValue",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.5f)
+                    color = Color.White.copy(alpha = 0.7f)
                 )
             }
 
@@ -124,22 +141,26 @@ fun AirQualityCard(
                     .fillMaxWidth()
                     .height(6.dp)) {
                     val trackHeight = size.height
-                    // Draw Gradient Track
+
+                    // Draw Gradient Track (Green -> Yellow -> Orange -> Red -> Purple)
                     drawRoundRect(
                         brush = Brush.horizontalGradient(
                             colors = listOf(
-                                Color(0xFF3254C8), // Blue
-                                Color(0xFF7150C2), // Purple
-                                Color(0xFFE64392)  // Pink
+                                Color(0xFF00FF00), // Green - Good
+                                Color(0xFFFFFF00), // Yellow - Moderate
+                                Color(0xFFFFA500), // Orange - Unhealthy for sensitive
+                                Color(0xFFFF0000), // Red - Unhealthy
+                                Color(0xFF800080)  // Purple - Very Unhealthy
                             )
                         ),
                         size = size,
                         cornerRadius = CornerRadius(trackHeight / 2)
                     )
 
-                    // Draw the white Thumb
+                    // Draw the white Thumb based on progress (now properly normalized)
                     val thumbRadius = 4.dp.toPx()
-                    val xPos = size.width * progress
+                    val xPos = size.width * progress.coerceIn(0f, 1f)
+
                     drawCircle(
                         color = Color.White,
                         radius = thumbRadius,
@@ -148,25 +169,67 @@ fun AirQualityCard(
                 }
             }
 
-            // Footer "See more" Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            if (showDetails) {
+                // Detailed pollutant information
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Show some mock details for now
+                PollutantDetailRow("PM2.5", "12.5", "µg/m³")
+                PollutantDetailRow("PM10", "25.3", "µg/m³")
+                PollutantDetailRow("O₃", "45.2", "µg/m³")
+
                 Text(
-                    text = "See more",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White
+                    text = "Tap to show less",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.4f),
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.5f),
-                    modifier = Modifier.size(18.dp)
-                )
+            } else {
+                // Footer "See more" Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "See details",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.5f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+fun PollutantDetailRow(
+    pollutant: String,
+    value: String,
+    unit: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = pollutant,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.6f)
+        )
+        Text(
+            text = "$value $unit",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White
+        )
     }
 }
 
