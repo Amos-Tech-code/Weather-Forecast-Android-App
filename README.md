@@ -11,13 +11,6 @@ A beautiful weather forecast app built with Jetpack Compose.
 
 ## Screenshots
 
-| Home Screen | Forecast Screen |
-|-------------|----------------|
-| Coming soon | Coming soon |
-
-## Architecture
-
-This project follows **MVVM architecture** with a clean separation between UI, domain, and data layers.
 
 ## Tech Stack
 
