@@ -613,7 +613,8 @@ private fun WeatherDetailsGrid(details: WeatherDetails) {
         AirQualityCard(
             title = "AIR QUALITY",
             value = details.airQuality.riskLevel,
-            progress = details.airQuality.value / 5f
+            progress = details.airQuality.value / 100f, // Fix: divide by 100 for 0-1 range
+            aqiValue = details.airQuality.value
         )
 
         // UV Index and Sunrise Row
