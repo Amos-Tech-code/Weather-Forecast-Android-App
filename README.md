@@ -11,7 +11,7 @@ A beautiful weather forecast app built with Jetpack Compose.
 
 ## Screenshots
 
-Screenshots of the application will be added here in future releases.
+Application screenshots will be uploaded once UI stabilization is complete.
 
 ## Tech Stack
 
