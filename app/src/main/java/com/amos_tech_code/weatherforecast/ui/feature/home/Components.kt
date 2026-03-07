@@ -262,23 +262,16 @@ fun WindCard(
     modifier: Modifier,
     speed: String,
     direction: String? = null,
-    windDirectionDegrees: Int? = null // Add this parameter for actual degrees
+    windDirectionDegrees: Int
 ) {
-    var showDetails by remember { mutableStateOf(false) }
-
-    WeatherDetailCardContainer(
-        modifier = modifier
-            .clickable { showDetails = !showDetails },
-        title = "WIND",
-        value = ""
-    ) {
+    WeatherDetailCardContainer(modifier, title = "WIND", value = "") {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
             contentAlignment = Alignment.Center
         ) {
-            val compassSize = 100.dp
+            val compassSize = 100.dp // Define a single size for the compass
 
             // Compass Circles
             Canvas(modifier = Modifier.size(compassSize)) {
@@ -295,7 +288,7 @@ fun WindCard(
                 )
             }
 
-            // Cardinal Directions
+            // Cardinal Directions positioned around the compass
             val cardinalPadding = (compassSize / 2) + 8.dp
             Text(
                 "N",
@@ -330,60 +323,22 @@ fun WindCard(
                 fontSize = 10.sp
             )
 
-            // Wind Speed and Direction Arrow
+
+            // Stack the Speed and Arrow inside their own Box for proper alignment
             Box(contentAlignment = Alignment.Center) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    if (showDetails) {
-                        // Show detailed wind info
-                        Text(
-                            text = "Gusts",
-                            style = AppTypography.caption2,
-                            color = Color.White.copy(0.6f)
-                        )
-                        Text(
-                            text = getWindGusts(speed),
-                            style = AppTypography.title3Bold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = direction ?: "N/A",
-                            style = AppTypography.caption2,
-                            color = Color.White.copy(0.6f)
-                        )
-                    } else {
-                        // Show speed
-                        Text(
-                            text = speed,
-                            style = AppTypography.title3Bold,
-                            color = Color.White
-                        )
-                    }
+                // Center Speed
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(speed, style = AppTypography.title3Bold, color = Color.White)
                 }
 
-                // Wind Arrow Indicator - Now dynamic based on wind direction
+                // Wind Arrow Indicator
                 Icon(
                     imageVector = Icons.Default.ArrowUpward,
                     contentDescription = "Wind direction",
-                    tint = Color.White.copy(0.6f),
+                    tint = Color.White.copy(0.6f), // Use a contrasting color to make it visible
                     modifier = Modifier
-                        .size(50.dp)
+                        .size(50.dp) // Make the arrow container the size of the compass
                         .rotate(getArrowRotation(windDirectionDegrees))
-                )
-            }
-
-            // Small hint for interaction
-            if (!showDetails) {
-                Text(
-                    text = "Tap for gusts",
-                    style = AppTypography.caption2,
-                    color = Color.White.copy(0.3f),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 4.dp)
                 )
             }
         }
