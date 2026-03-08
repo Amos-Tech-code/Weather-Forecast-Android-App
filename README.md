@@ -20,7 +20,7 @@ Application screenshots will be uploaded once UI stabilization is complete.
 
 ## Architecture
 
-The project follows MVVM architecture with a clear separation of concerns.
+This project follows the MVVM architecture pattern to separate UI, domain logic, and data sources.
 
 ## Tech Stack
 
