@@ -20,17 +20,17 @@ Application screenshots will be uploaded once UI stabilization is complete.
 
 ## Architecture
 
-This project follows the MVVM architecture pattern to separate UI, domain logic, and data sources.
+The project follows MVVM architecture with a clear separation of concerns.
 
 ## Tech Stack
-
-Core technologies used in the application:
 
 - Kotlin
 - Jetpack Compose
 - MVVM Architecture
-- Retrofit
-- Room
+- Koin (Dependency Injection)
+- Retrofit (Networking)
+- Room (Local Database)
+- Open-Meteo API (Weather Data Provider)
 
 ## Setup
 
