@@ -18,6 +18,10 @@ Application screenshots will be uploaded once UI stabilization is complete.
 | Home | Coming soon |
 | Forecast | Coming soon |
 
+## Architecture
+
+The project follows MVVM architecture with a clear separation of concerns.
+
 ## Tech Stack
 
 - Kotlin
