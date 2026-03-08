@@ -24,13 +24,13 @@ The project follows MVVM architecture with a clear separation of concerns.
 
 ## Tech Stack
 
+Core technologies used in the application:
+
 - Kotlin
 - Jetpack Compose
 - MVVM Architecture
-- Koin for DI
-- Retrofit for networking
-- Room for local storage
-- Open-Meteo API
+- Retrofit
+- Room
 
 ## Setup
 
